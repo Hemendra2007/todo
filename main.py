@@ -18,25 +18,55 @@ class TodoApp:
         with open(self.filename, 'w') as f:
             json.dump(self.tasks, f, indent=4)
 
-    def add_task(self, task, due_date=None):
-        self.tasks.append({'task': task, 'done': False, 'due_date': due_date})
+    def add_task(self, task, due_date=None, priority="Medium"):
+        self.tasks.append({'task': task, 'done': False, 'due_date': due_date, 'priority': priority})
         self.save_tasks()
 
     def view_tasks(self):
-        if not self.tasks:
-            print("No tasks available.")
-        for i, t in enumerate(self.tasks, 1):
-            status = "✓" if t['done'] else "✗"
-            due_date = f" (Due: {t['due_date']})" if t['due_date'] else ""
-            overdue = self.check_overdue(t['due_date']) if t['due_date'] else False
-            overdue_str = " (Overdue)" if overdue else ""
-            print(f"{i}. {t['task']} [{status}]{due_date}{overdue_str}")
+        pending_tasks = [t for t in self.tasks if not t['done']]
+        completed_tasks = [t for t in self.tasks if t['done']]
+
+        print("\nPending Tasks:")
+        if not pending_tasks:
+            print("No pending tasks available.")
+        for i, t in enumerate(pending_tasks, 1):
+            self.print_task(t, i)
+
+        print("\nCompleted Tasks:")
+        if not completed_tasks:
+            print("No completed tasks available.")
+        for i, t in enumerate(completed_tasks, 1):
+            self.print_task(t, i)
+
+    def print_task(self, t, index):
+        status = "✓" if t['done'] else "✗"
+        due_date = f" (Due: {t['due_date']})" if t['due_date'] else ""
+        overdue = self.check_overdue(t['due_date']) if t['due_date'] else False
+        overdue_str = " (Overdue)" if overdue else ""
+        priority = f" [Priority: {t['priority']}]" if 'priority' in t else ""
+        print(f"{index}. {t['task']} [{status}]{due_date}{overdue_str}{priority}")
+
+    def set_due_date(self, task_number, new_due_date):
+        if 0 < task_number <= len(self.tasks):
+            self.tasks[task_number - 1]['due_date'] = new_due_date
+            self.save_tasks()
+            print(f"Due date of task {task_number} set to {new_due_date}.")
+        else:
+            print("Invalid task number.")
 
     def check_overdue(self, due_date):
         if due_date:
             due_date_obj = datetime.strptime(due_date, "%Y-%m-%d")
             return datetime.now() > due_date_obj
         return False
+
+    def set_priority(self, task_number, priority):
+        if 0 < task_number <= len(self.tasks):
+            self.tasks[task_number - 1]['priority'] = priority
+            self.save_tasks()
+            print(f"Priority of task {task_number} set to {priority}.")
+        else:
+            print("Invalid task number.")
 
     def mark_task_done(self, task_number):
         if 0 < task_number <= len(self.tasks):
@@ -64,9 +94,7 @@ class TodoApp:
         results = [t for t in self.tasks if keyword.lower() in t['task'].lower()]
         if results:
             for i, t in enumerate(results, 1):
-                status = "✓" if t['done'] else "✗"
-                due_date = f" (Due: {t['due_date']})" if t['due_date'] else ""
-                print(f"{i}. {t['task']} [{status}]{due_date}")
+                self.print_task(t, i)
         else:
             print("No tasks found.")
 
@@ -84,33 +112,39 @@ class TodoApp:
             self.tasks.sort(key=lambda x: x['task'].lower())
         elif by == "status":
             self.tasks.sort(key=lambda x: x['done'])
+        elif by == "priority":
+            priority_order = {"High": 1, "Medium": 2, "Low": 3}
+            self.tasks.sort(key=lambda x: priority_order.get(x['priority'], 4))
         self.save_tasks()
         print(f"Tasks sorted by {by}.")
-
+        
     def help_menu(self):
         print("""
-        1. Add Task: Adds a new task with an optional due date.
-        2. View Tasks: Views all tasks with status and due dates.
+        1. Add Task: Adds a new task with an optional due date and priority.
+        2. View Tasks: Views pending and completed tasks with status, due dates, and priorities.
         3. Mark Task as Done: Marks a specific task as done.
         4. Delete Task: Deletes a specific task.
         5. Edit Task: Edits the content of a specific task.
-        6. Clear All Tasks: Clears all tasks from the list.
-        7. Search Task: Searches for tasks by keyword.
-        8. Undo Last Delete: Restores the last deleted task.
-        9. Sort Tasks: Sort tasks by name or completion status.
-        10. Help: Displays this help menu.
-        11. Exit: Exits the application.
+        6. Set Priority: Set a priority level (High, Medium, Low) for a task.
+        7. Set Due Date: Update the due date of a task.
+        8. Clear All Tasks: Clears all tasks from the list.
+        9. Search Task: Searches for tasks by keyword.
+        10. Undo Last Delete: Restores the last deleted task.
+        11. Sort Tasks: Sort tasks by name, status, or priority.
+        12. Help: Displays this help menu.
+        13. Exit: Exits the application.
         """)
 
 def main():
     app = TodoApp()
     while True:
-        choice = input("\n1. Add Task\n2. View Tasks\n3. Mark Task as Done\n4. Delete Task\n5. Edit Task\n6. Clear All Tasks\n7. Search Task\n8. Undo Last Delete\n9. Sort Tasks\n10. Help\n11. Exit\nChoice: ")
+        choice = input("\n1. Add Task\n2. View Tasks\n3. Mark Task as Done\n4. Delete Task\n5. Edit Task\n6. Set Priority\n7. Set Due Date\n8. Clear All Tasks\n9. Search Task\n10. Undo Last Delete\n11. Sort Tasks\n12. Help\n13. Exit\nChoice: ")
         
         if choice == '1':
             task = input("Task: ")
             due_date = input("Due date (YYYY-MM-DD, optional): ")
-            app.add_task(task, due_date if due_date else None)
+            priority = input("Priority (High/Medium/Low, default is Medium): ").capitalize() or "Medium"
+            app.add_task(task, due_date if due_date else None, priority)
         elif choice == '2':
             app.view_tasks()
         elif choice == '3':
@@ -124,18 +158,26 @@ def main():
             new_task = input("New task: ")
             app.edit_task(task_num, new_task)
         elif choice == '6':
-            app.clear_all_tasks()
+            task_num = int(input("Task number to set priority: "))
+            priority = input("New priority (High/Medium/Low): ").capitalize()
+            app.set_priority(task_num, priority)
         elif choice == '7':
+            task_num = int(input("Task number to set due date: "))
+            new_due_date = input("New due date (YYYY-MM-DD): ")
+            app.set_due_date(task_num, new_due_date)
+        elif choice == '8':
+            app.clear_all_tasks()
+        elif choice == '9':
             keyword = input("Search keyword: ")
             app.search_task(keyword)
-        elif choice == '8':
-            app.undo_last_delete()
-        elif choice == '9':
-            sort_by = input("Sort by (name/status): ").lower()
-            app.sort_tasks(by=sort_by)
         elif choice == '10':
-            app.help_menu()
+            app.undo_last_delete()
         elif choice == '11':
+            sort_by = input("Sort by (name/status/priority): ").lower()
+            app.sort_tasks(by=sort_by)
+        elif choice == '12':
+            app.help_menu()
+        elif choice == '13':
             break
 
 if __name__ == "__main__":
