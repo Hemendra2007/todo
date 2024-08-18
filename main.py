@@ -159,10 +159,11 @@ class TodoApp:
         print(f"Tasks sorted by {by}.")
 
     def check_reminders(self):
+        today = datetime.now().date()
         for task in self.tasks:
             if task['reminder_date']:
-                reminder_date_obj = datetime.strptime(task['reminder_date'], "%Y-%m-%d")
-                if datetime.now().date() == reminder_date_obj.date() and not task['done']:
+                reminder_date_obj = datetime.strptime(task['reminder_date'], "%Y-%m-%d").date()
+                if today == reminder_date_obj and not task['done']:
                     print(f"Reminder: Task '{task['task']}' is due for today!")
 
     def set_reminder(self, task_number, reminder_date):
@@ -176,6 +177,39 @@ class TodoApp:
         except Exception as e:
             print(f"An error occurred: {e}")
 
+    def filter_by_due_date(self, date):
+        filtered_tasks = [t for t in self.tasks if t.get('due_date') == date]
+        if filtered_tasks:
+            for i, t in enumerate(filtered_tasks, 1):
+                self.print_task(t, i)
+        else:
+            print(f"No tasks due on {date}.")
+
+    def get_task_count(self):
+        total_tasks = len(self.tasks)
+        pending_tasks = len([t for t in self.tasks if not t['done']])
+        completed_tasks = total_tasks - pending_tasks
+        print(f"Total tasks: {total_tasks}")
+        print(f"Pending tasks: {pending_tasks}")
+        print(f"Completed tasks: {completed_tasks}")
+
+    def get_task_summary(self):
+        completed_count = len([t for t in self.tasks if t['done']])
+        pending_count = len(self.tasks) - completed_count
+        print(f"Tasks Summary: {pending_count} pending, {completed_count} completed.")
+
+    def archive_completed_tasks(self):
+        archive_filename = 'completed_tasks.json'
+        completed_tasks = [t for t in self.tasks if t['done']]
+        if completed_tasks:
+            with open(archive_filename, 'w') as f:
+                json.dump(completed_tasks, f, indent=4)
+            self.tasks = [t for t in self.tasks if not t['done']]
+            self.save_tasks()
+            print(f"Archived {len(completed_tasks)} completed tasks.")
+        else:
+            print("No completed tasks to archive.")
+
     def help_menu(self):
         print("""
         1. Add Task: Adds a new task with an optional due date, priority, and reminder.
@@ -185,19 +219,22 @@ class TodoApp:
         5. Edit Task: Edits the content of a specific task.
         6. Set Priority: Set a priority level (High, Medium, Low) for a task.
         7. Set Due Date: Update the due date of a task.
-        8. Set Reminder: Set a reminder for a task.
+        8. Set Reminder: Set a reminder date for a task.
         9. Clear All Tasks: Clears all tasks from the list.
         10. Search Task: Searches for tasks by keyword.
         11. Undo Last Delete: Restores the last deleted task.
         12. Sort Tasks: Sort tasks by name, status, priority, due date, or creation date.
-        13. Help: Displays this help menu.
-        14. Exit: Exits the application.
+        13. Filter by Due Date: Filters tasks by a specific due date.
+        14. Task Count: Displays the count of total, pending, and completed tasks.
+        15. Archive Completed Tasks: Archives completed tasks to a separate file.
+        16. Help: Displays this help menu.
+        17. Exit: Exits the application.
         """)
 
 def main():
     app = TodoApp()
     while True:
-        choice = input("\n1. Add Task\n2. View Tasks\n3. Mark Task as Done\n4. Delete Task\n5. Edit Task\n6. Set Priority\n7. Set Due Date\n8. Set Reminder\n9. Clear All Tasks\n10. Search Task\n11. Undo Last Delete\n12. Sort Tasks\n13. Help\n14. Exit\nChoice: ")
+        choice = input("\n1. Add Task\n2. View Tasks\n3. Mark Task as Done\n4. Delete Task\n5. Edit Task\n6. Set Priority\n7. Set Due Date\n8. Set Reminder\n9. Clear All Tasks\n10. Search Task\n11. Undo Last Delete\n12. Sort Tasks\n13. Filter by Due Date\n14. Task Count\n15. Archive Completed Tasks\n16. Help\n17. Exit\nChoice: ")
         
         if choice == '1':
             task = input("Task: ")
@@ -240,8 +277,15 @@ def main():
             sort_by = input("Sort by (name/status/priority/due_date/created_at): ").lower()
             app.sort_tasks(by=sort_by)
         elif choice == '13':
-            app.help_menu()
+            date = input("Filter tasks by due date (YYYY-MM-DD): ")
+            app.filter_by_due_date(date)
         elif choice == '14':
+            app.get_task_count()
+        elif choice == '15':
+            app.archive_completed_tasks()
+        elif choice == '16':
+            app.help_menu()
+        elif choice == '17':
             break
 
 if __name__ == "__main__":
