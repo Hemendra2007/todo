@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 class TodoApp:
     def __init__(self):
@@ -20,7 +20,7 @@ class TodoApp:
         print("Tasks saved automatically.")
 
     def add_task(self, task, due_date=None, priority="Medium", reminder_date=None):
-        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        created_at = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
         self.tasks.append({
             'task': task,
             'done': False,
@@ -50,20 +50,34 @@ class TodoApp:
 
     def print_task(self, t, index):
         status = "✓" if t['done'] else "✗"
-        due_date = f" (Due: {t['due_date']})" if t['due_date'] else ""
+        due_date = f" (Due: {self.format_date(t['due_date'])})" if t['due_date'] else ""
         overdue = self.check_overdue(t['due_date']) if t['due_date'] else False
         overdue_str = " (Overdue)" if overdue else ""
         priority = f" [Priority: {t['priority']}]" if 'priority' in t else ""
-        created_at = f" [Created At: {t['created_at']}]"
-        reminder_date = f" [Reminder: {t['reminder_date']}]" if t.get('reminder_date') else ""
+        created_at = f" [Created At: {self.format_date(t['created_at'])}]"
+        reminder_date = f" [Reminder: {self.format_date(t.get('reminder_date'))}]" if t.get('reminder_date') else ""
         print(f"{index}. {t['task']} [{status}]{due_date}{overdue_str}{priority}{created_at}{reminder_date}")
+
+    def format_date(self, date_str):
+        if date_str:
+            try:
+                return datetime.strptime(date_str, "%d-%m-%Y").strftime("%d-%m-%Y")
+            except ValueError:
+                return date_str
+        return ""
+
+    def parse_date(self, date_str):
+        try:
+            return datetime.strptime(date_str, "%d-%m-%Y").date()
+        except ValueError:
+            return None
 
     def set_due_date(self, task_number, new_due_date):
         try:
             if 0 < task_number <= len(self.tasks):
                 self.tasks[task_number - 1]['due_date'] = new_due_date
                 self.save_tasks()
-                print(f"Due date of task {task_number} set to {new_due_date}.")
+                print(f"Due date of task {task_number} set to {self.format_date(new_due_date)}.")
             else:
                 print("Invalid task number.")
         except Exception as e:
@@ -71,8 +85,8 @@ class TodoApp:
 
     def check_overdue(self, due_date):
         if due_date:
-            due_date_obj = datetime.strptime(due_date, "%Y-%m-%d")
-            return datetime.now() > due_date_obj
+            due_date_obj = self.parse_date(due_date)
+            return datetime.now().date() > due_date_obj if due_date_obj else False
         return False
 
     def set_priority(self, task_number, priority):
@@ -152,9 +166,9 @@ class TodoApp:
             priority_order = {"High": 1, "Medium": 2, "Low": 3}
             self.tasks.sort(key=lambda x: priority_order.get(x['priority'], 4))
         elif by == "due_date":
-            self.tasks.sort(key=lambda x: (x['due_date'] is None, x['due_date']))
+            self.tasks.sort(key=lambda x: (x['due_date'] is None, self.parse_date(x['due_date'])))
         elif by == "created_at":
-            self.tasks.sort(key=lambda x: datetime.strptime(x['created_at'], "%Y-%m-%d %H:%M:%S"))
+            self.tasks.sort(key=lambda x: datetime.strptime(x['created_at'], "%d-%m-%Y %H:%M:%S"))
         self.save_tasks()
         print(f"Tasks sorted by {by}.")
 
@@ -162,8 +176,8 @@ class TodoApp:
         today = datetime.now().date()
         for task in self.tasks:
             if task['reminder_date']:
-                reminder_date_obj = datetime.strptime(task['reminder_date'], "%Y-%m-%d").date()
-                if today == reminder_date_obj and not task['done']:
+                reminder_date_obj = self.parse_date(task['reminder_date'])
+                if reminder_date_obj and today == reminder_date_obj and not task['done']:
                     print(f"Reminder: Task '{task['task']}' is due for today!")
 
     def set_reminder(self, task_number, reminder_date):
@@ -171,7 +185,7 @@ class TodoApp:
             if 0 < task_number <= len(self.tasks):
                 self.tasks[task_number - 1]['reminder_date'] = reminder_date
                 self.save_tasks()
-                print(f"Reminder for task {task_number} set to {reminder_date}.")
+                print(f"Reminder for task {task_number} set to {self.format_date(reminder_date)}.")
             else:
                 print("Invalid task number.")
         except Exception as e:
@@ -183,7 +197,7 @@ class TodoApp:
             for i, t in enumerate(filtered_tasks, 1):
                 self.print_task(t, i)
         else:
-            print(f"No tasks due on {date}.")
+            print(f"No tasks due on {self.format_date(date)}.")
 
     def get_task_count(self):
         total_tasks = len(self.tasks)
@@ -238,9 +252,9 @@ def main():
         
         if choice == '1':
             task = input("Task: ")
-            due_date = input("Due date (YYYY-MM-DD, optional): ")
+            due_date = input("Due date (DD-MM-YYYY, optional): ")
             priority = input("Priority (High/Medium/Low, default is Medium): ").capitalize() or "Medium"
-            reminder_date = input("Reminder date (YYYY-MM-DD, optional): ")
+            reminder_date = input("Reminder date (DD-MM-YYYY, optional): ")
             app.add_task(task, due_date if due_date else None, priority, reminder_date if reminder_date else None)
         elif choice == '2':
             app.view_tasks()
@@ -260,11 +274,11 @@ def main():
             app.set_priority(task_num, priority)
         elif choice == '7':
             task_num = int(input("Task number to set due date: "))
-            new_due_date = input("New due date (YYYY-MM-DD): ")
+            new_due_date = input("New due date (DD-MM-YYYY): ")
             app.set_due_date(task_num, new_due_date)
         elif choice == '8':
             task_num = int(input("Task number to set reminder: "))
-            reminder_date = input("Reminder date (YYYY-MM-DD): ")
+            reminder_date = input("Reminder date (DD-MM-YYYY): ")
             app.set_reminder(task_num, reminder_date)
         elif choice == '9':
             app.clear_all_tasks()
@@ -277,7 +291,7 @@ def main():
             sort_by = input("Sort by (name/status/priority/due_date/created_at): ").lower()
             app.sort_tasks(by=sort_by)
         elif choice == '13':
-            date = input("Filter tasks by due date (YYYY-MM-DD): ")
+            date = input("Filter tasks by due date (DD-MM-YYYY): ")
             app.filter_by_due_date(date)
         elif choice == '14':
             app.get_task_count()
