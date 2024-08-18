@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class TodoApp:
     def __init__(self):
@@ -19,18 +19,20 @@ class TodoApp:
             json.dump(self.tasks, f, indent=4)
         print("Tasks saved automatically.")
 
-    def add_task(self, task, due_date=None, priority="Medium"):
+    def add_task(self, task, due_date=None, priority="Medium", reminder_date=None):
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.tasks.append({
             'task': task,
             'done': False,
             'due_date': due_date,
             'priority': priority,
-            'created_at': created_at
+            'created_at': created_at,
+            'reminder_date': reminder_date
         })
         self.save_tasks()
 
     def view_tasks(self):
+        self.check_reminders()
         pending_tasks = [t for t in self.tasks if not t['done']]
         completed_tasks = [t for t in self.tasks if t['done']]
 
@@ -53,7 +55,8 @@ class TodoApp:
         overdue_str = " (Overdue)" if overdue else ""
         priority = f" [Priority: {t['priority']}]" if 'priority' in t else ""
         created_at = f" [Created At: {t['created_at']}]"
-        print(f"{index}. {t['task']} [{status}]{due_date}{overdue_str}{priority}{created_at}")
+        reminder_date = f" [Reminder: {t['reminder_date']}]" if t.get('reminder_date') else ""
+        print(f"{index}. {t['task']} [{status}]{due_date}{overdue_str}{priority}{created_at}{reminder_date}")
 
     def set_due_date(self, task_number, new_due_date):
         try:
@@ -155,33 +158,53 @@ class TodoApp:
         self.save_tasks()
         print(f"Tasks sorted by {by}.")
 
+    def check_reminders(self):
+        for task in self.tasks:
+            if task['reminder_date']:
+                reminder_date_obj = datetime.strptime(task['reminder_date'], "%Y-%m-%d")
+                if datetime.now().date() == reminder_date_obj.date() and not task['done']:
+                    print(f"Reminder: Task '{task['task']}' is due for today!")
+
+    def set_reminder(self, task_number, reminder_date):
+        try:
+            if 0 < task_number <= len(self.tasks):
+                self.tasks[task_number - 1]['reminder_date'] = reminder_date
+                self.save_tasks()
+                print(f"Reminder for task {task_number} set to {reminder_date}.")
+            else:
+                print("Invalid task number.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
     def help_menu(self):
         print("""
-        1. Add Task: Adds a new task with an optional due date and priority.
-        2. View Tasks: Views pending and completed tasks with status, due dates, and priorities.
+        1. Add Task: Adds a new task with an optional due date, priority, and reminder.
+        2. View Tasks: Views pending and completed tasks with status, due dates, priorities, and reminders.
         3. Mark Task as Done: Marks a specific task as done.
         4. Delete Task: Deletes a specific task.
         5. Edit Task: Edits the content of a specific task.
         6. Set Priority: Set a priority level (High, Medium, Low) for a task.
         7. Set Due Date: Update the due date of a task.
-        8. Clear All Tasks: Clears all tasks from the list.
-        9. Search Task: Searches for tasks by keyword.
-        10. Undo Last Delete: Restores the last deleted task.
-        11. Sort Tasks: Sort tasks by name, status, priority, due date, or creation date.
-        12. Help: Displays this help menu.
-        13. Exit: Exits the application.
+        8. Set Reminder: Set a reminder for a task.
+        9. Clear All Tasks: Clears all tasks from the list.
+        10. Search Task: Searches for tasks by keyword.
+        11. Undo Last Delete: Restores the last deleted task.
+        12. Sort Tasks: Sort tasks by name, status, priority, due date, or creation date.
+        13. Help: Displays this help menu.
+        14. Exit: Exits the application.
         """)
 
 def main():
     app = TodoApp()
     while True:
-        choice = input("\n1. Add Task\n2. View Tasks\n3. Mark Task as Done\n4. Delete Task\n5. Edit Task\n6. Set Priority\n7. Set Due Date\n8. Clear All Tasks\n9. Search Task\n10. Undo Last Delete\n11. Sort Tasks\n12. Help\n13. Exit\nChoice: ")
+        choice = input("\n1. Add Task\n2. View Tasks\n3. Mark Task as Done\n4. Delete Task\n5. Edit Task\n6. Set Priority\n7. Set Due Date\n8. Set Reminder\n9. Clear All Tasks\n10. Search Task\n11. Undo Last Delete\n12. Sort Tasks\n13. Help\n14. Exit\nChoice: ")
         
         if choice == '1':
             task = input("Task: ")
             due_date = input("Due date (YYYY-MM-DD, optional): ")
             priority = input("Priority (High/Medium/Low, default is Medium): ").capitalize() or "Medium"
-            app.add_task(task, due_date if due_date else None, priority)
+            reminder_date = input("Reminder date (YYYY-MM-DD, optional): ")
+            app.add_task(task, due_date if due_date else None, priority, reminder_date if reminder_date else None)
         elif choice == '2':
             app.view_tasks()
         elif choice == '3':
@@ -203,18 +226,22 @@ def main():
             new_due_date = input("New due date (YYYY-MM-DD): ")
             app.set_due_date(task_num, new_due_date)
         elif choice == '8':
-            app.clear_all_tasks()
+            task_num = int(input("Task number to set reminder: "))
+            reminder_date = input("Reminder date (YYYY-MM-DD): ")
+            app.set_reminder(task_num, reminder_date)
         elif choice == '9':
+            app.clear_all_tasks()
+        elif choice == '10':
             keyword = input("Search keyword: ")
             app.search_task(keyword)
-        elif choice == '10':
-            app.undo_last_delete()
         elif choice == '11':
+            app.undo_last_delete()
+        elif choice == '12':
             sort_by = input("Sort by (name/status/priority/due_date/created_at): ").lower()
             app.sort_tasks(by=sort_by)
-        elif choice == '12':
-            app.help_menu()
         elif choice == '13':
+            app.help_menu()
+        elif choice == '14':
             break
 
 if __name__ == "__main__":
