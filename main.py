@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime
 
 class TodoApp:
     def __init__(self):
@@ -17,8 +18,8 @@ class TodoApp:
         with open(self.filename, 'w') as f:
             json.dump(self.tasks, f, indent=4)
 
-    def add_task(self, task):
-        self.tasks.append({'task': task, 'done': False})
+    def add_task(self, task, due_date=None):
+        self.tasks.append({'task': task, 'done': False, 'due_date': due_date})
         self.save_tasks()
 
     def view_tasks(self):
@@ -26,7 +27,16 @@ class TodoApp:
             print("No tasks available.")
         for i, t in enumerate(self.tasks, 1):
             status = "✓" if t['done'] else "✗"
-            print(f"{i}. {t['task']} [{status}]")
+            due_date = f" (Due: {t['due_date']})" if t['due_date'] else ""
+            overdue = self.check_overdue(t['due_date']) if t['due_date'] else False
+            overdue_str = " (Overdue)" if overdue else ""
+            print(f"{i}. {t['task']} [{status}]{due_date}{overdue_str}")
+
+    def check_overdue(self, due_date):
+        if due_date:
+            due_date_obj = datetime.strptime(due_date, "%Y-%m-%d")
+            return datetime.now() > due_date_obj
+        return False
 
     def mark_task_done(self, task_number):
         if 0 < task_number <= len(self.tasks):
@@ -55,7 +65,8 @@ class TodoApp:
         if results:
             for i, t in enumerate(results, 1):
                 status = "✓" if t['done'] else "✗"
-                print(f"{i}. {t['task']} [{status}]")
+                due_date = f" (Due: {t['due_date']})" if t['due_date'] else ""
+                print(f"{i}. {t['task']} [{status}]{due_date}")
         else:
             print("No tasks found.")
 
@@ -68,13 +79,38 @@ class TodoApp:
         else:
             print("No task to undo.")
 
+    def sort_tasks(self, by="name"):
+        if by == "name":
+            self.tasks.sort(key=lambda x: x['task'].lower())
+        elif by == "status":
+            self.tasks.sort(key=lambda x: x['done'])
+        self.save_tasks()
+        print(f"Tasks sorted by {by}.")
+
+    def help_menu(self):
+        print("""
+        1. Add Task: Adds a new task with an optional due date.
+        2. View Tasks: Views all tasks with status and due dates.
+        3. Mark Task as Done: Marks a specific task as done.
+        4. Delete Task: Deletes a specific task.
+        5. Edit Task: Edits the content of a specific task.
+        6. Clear All Tasks: Clears all tasks from the list.
+        7. Search Task: Searches for tasks by keyword.
+        8. Undo Last Delete: Restores the last deleted task.
+        9. Sort Tasks: Sort tasks by name or completion status.
+        10. Help: Displays this help menu.
+        11. Exit: Exits the application.
+        """)
+
 def main():
     app = TodoApp()
     while True:
-        choice = input("\n1. Add Task\n2. View Tasks\n3. Mark Task as Done\n4. Delete Task\n5. Edit Task\n6. Clear All Tasks\n7. Search Task\n8. Undo Last Delete\n9. Exit\nChoice: ")
+        choice = input("\n1. Add Task\n2. View Tasks\n3. Mark Task as Done\n4. Delete Task\n5. Edit Task\n6. Clear All Tasks\n7. Search Task\n8. Undo Last Delete\n9. Sort Tasks\n10. Help\n11. Exit\nChoice: ")
         
         if choice == '1':
-            app.add_task(input("Task: "))
+            task = input("Task: ")
+            due_date = input("Due date (YYYY-MM-DD, optional): ")
+            app.add_task(task, due_date if due_date else None)
         elif choice == '2':
             app.view_tasks()
         elif choice == '3':
@@ -95,6 +131,11 @@ def main():
         elif choice == '8':
             app.undo_last_delete()
         elif choice == '9':
+            sort_by = input("Sort by (name/status): ").lower()
+            app.sort_tasks(by=sort_by)
+        elif choice == '10':
+            app.help_menu()
+        elif choice == '11':
             break
 
 if __name__ == "__main__":
