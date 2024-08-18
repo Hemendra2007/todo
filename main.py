@@ -17,9 +17,17 @@ class TodoApp:
     def save_tasks(self):
         with open(self.filename, 'w') as f:
             json.dump(self.tasks, f, indent=4)
+        print("Tasks saved automatically.")
 
     def add_task(self, task, due_date=None, priority="Medium"):
-        self.tasks.append({'task': task, 'done': False, 'due_date': due_date, 'priority': priority})
+        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.tasks.append({
+            'task': task,
+            'done': False,
+            'due_date': due_date,
+            'priority': priority,
+            'created_at': created_at
+        })
         self.save_tasks()
 
     def view_tasks(self):
@@ -44,15 +52,19 @@ class TodoApp:
         overdue = self.check_overdue(t['due_date']) if t['due_date'] else False
         overdue_str = " (Overdue)" if overdue else ""
         priority = f" [Priority: {t['priority']}]" if 'priority' in t else ""
-        print(f"{index}. {t['task']} [{status}]{due_date}{overdue_str}{priority}")
+        created_at = f" [Created At: {t['created_at']}]"
+        print(f"{index}. {t['task']} [{status}]{due_date}{overdue_str}{priority}{created_at}")
 
     def set_due_date(self, task_number, new_due_date):
-        if 0 < task_number <= len(self.tasks):
-            self.tasks[task_number - 1]['due_date'] = new_due_date
-            self.save_tasks()
-            print(f"Due date of task {task_number} set to {new_due_date}.")
-        else:
-            print("Invalid task number.")
+        try:
+            if 0 < task_number <= len(self.tasks):
+                self.tasks[task_number - 1]['due_date'] = new_due_date
+                self.save_tasks()
+                print(f"Due date of task {task_number} set to {new_due_date}.")
+            else:
+                print("Invalid task number.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     def check_overdue(self, due_date):
         if due_date:
@@ -61,27 +73,48 @@ class TodoApp:
         return False
 
     def set_priority(self, task_number, priority):
-        if 0 < task_number <= len(self.tasks):
-            self.tasks[task_number - 1]['priority'] = priority
-            self.save_tasks()
-            print(f"Priority of task {task_number} set to {priority}.")
-        else:
-            print("Invalid task number.")
+        try:
+            if 0 < task_number <= len(self.tasks):
+                self.tasks[task_number - 1]['priority'] = priority
+                self.save_tasks()
+                print(f"Priority of task {task_number} set to {priority}.")
+            else:
+                print("Invalid task number.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     def mark_task_done(self, task_number):
-        if 0 < task_number <= len(self.tasks):
-            self.tasks[task_number - 1]['done'] = True
-            self.save_tasks()
+        try:
+            if 0 < task_number <= len(self.tasks):
+                self.tasks[task_number - 1]['done'] = True
+                self.save_tasks()
+                print(f"Task {task_number} marked as done.")
+            else:
+                print("Invalid task number.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     def delete_task(self, task_number):
-        if 0 < task_number <= len(self.tasks):
-            self.last_deleted_task = self.tasks.pop(task_number - 1)
-            self.save_tasks()
+        try:
+            if 0 < task_number <= len(self.tasks):
+                self.last_deleted_task = self.tasks.pop(task_number - 1)
+                self.save_tasks()
+                print(f"Task {task_number} deleted.")
+            else:
+                print("Invalid task number.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     def edit_task(self, task_number, new_task):
-        if 0 < task_number <= len(self.tasks):
-            self.tasks[task_number - 1]['task'] = new_task
-            self.save_tasks()
+        try:
+            if 0 < task_number <= len(self.tasks):
+                self.tasks[task_number - 1]['task'] = new_task
+                self.save_tasks()
+                print(f"Task {task_number} updated.")
+            else:
+                print("Invalid task number.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     def clear_all_tasks(self):
         confirm = input("Are you sure you want to clear all tasks? (y/n): ").lower()
@@ -115,9 +148,13 @@ class TodoApp:
         elif by == "priority":
             priority_order = {"High": 1, "Medium": 2, "Low": 3}
             self.tasks.sort(key=lambda x: priority_order.get(x['priority'], 4))
+        elif by == "due_date":
+            self.tasks.sort(key=lambda x: (x['due_date'] is None, x['due_date']))
+        elif by == "created_at":
+            self.tasks.sort(key=lambda x: datetime.strptime(x['created_at'], "%Y-%m-%d %H:%M:%S"))
         self.save_tasks()
         print(f"Tasks sorted by {by}.")
-        
+
     def help_menu(self):
         print("""
         1. Add Task: Adds a new task with an optional due date and priority.
@@ -130,7 +167,7 @@ class TodoApp:
         8. Clear All Tasks: Clears all tasks from the list.
         9. Search Task: Searches for tasks by keyword.
         10. Undo Last Delete: Restores the last deleted task.
-        11. Sort Tasks: Sort tasks by name, status, or priority.
+        11. Sort Tasks: Sort tasks by name, status, priority, due date, or creation date.
         12. Help: Displays this help menu.
         13. Exit: Exits the application.
         """)
@@ -173,7 +210,7 @@ def main():
         elif choice == '10':
             app.undo_last_delete()
         elif choice == '11':
-            sort_by = input("Sort by (name/status/priority): ").lower()
+            sort_by = input("Sort by (name/status/priority/due_date/created_at): ").lower()
             app.sort_tasks(by=sort_by)
         elif choice == '12':
             app.help_menu()
